@@ -7,7 +7,6 @@ X-non-backtracking centrality, X-degree centrality, and related
 computations.
 
 """
-
 from collections import defaultdict
 
 import networkx as nx
