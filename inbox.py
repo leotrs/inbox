@@ -70,14 +70,16 @@ def half_incidence(graph, ordering='blocks', return_ordering=False):
     numedges = graph.size()
 
     if ordering == 'blocks':
-        src_pairs = lambda i, u, v: [(u, i), (v, numedges + i)]
-        tgt_pairs = lambda i, u, v: [(v, i), (u, numedges + i)]
+        def src_pairs(i, u, v): return [(u, i), (v, numedges + i)]
+        def tgt_pairs(i, u, v): return [(v, i), (u, numedges + i)]
     if ordering == 'consecutive':
-        src_pairs = lambda i, u, v: [(u, 2*i), (v, 2*i + 1)]
-        tgt_pairs = lambda i, u, v: [(v, 2*i), (u, 2*i + 1)]
+        def src_pairs(i, u, v): return [(u, 2*i), (v, 2*i + 1)]
+        def tgt_pairs(i, u, v): return [(v, 2*i), (u, 2*i + 1)]
     if isinstance(ordering, dict):
-        src_pairs = lambda i, u, v: [(u, ordering[i][0]), (v, ordering[i][1])]
-        tgt_pairs = lambda i, u, v: [(v, ordering[i][0]), (u, ordering[i][1])]
+        def src_pairs(i, u, v): return [
+            (u, ordering[i][0]), (v, ordering[i][1])]
+        def tgt_pairs(i, u, v): return [
+            (v, ordering[i][0]), (u, ordering[i][1])]
 
     def make_coo(make_pairs):
         """Make a sparse 0-1 matrix.
@@ -98,11 +100,11 @@ def half_incidence(graph, ordering='blocks', return_ordering=False):
 
     if return_ordering:
         if ordering == 'blocks':
-            ord_func = lambda x: (x, numedges+x)
+            def ord_func(x): return (x, numedges+x)
         elif ordering == 'consecutive':
-            ord_func = lambda x: (2*x, 2*x+1)
+            def ord_func(x): return (2*x, 2*x+1)
         elif isinstance(ordering, dict):
-            ord_func = lambda x: ordering[x]
+            def ord_func(x): return ordering[x]
         return source, target, ord_func
     else:
         return source, target
@@ -168,7 +170,8 @@ def nb_matrix(graph, aux=False, ordering='blocks', return_ordering=False):
 
         # h_coords contains the (row, col) coordinates of non-zero elements
         # in the NB-matrix
-        h_coords = [(r, c) for r, c in inter_coords if (c, r) not in inter_coords]
+        h_coords = [(r, c)
+                    for r, c in inter_coords if (c, r) not in inter_coords]
         data = np.ones(len(h_coords))
         nbm = sparse.coo_matrix((data, list(zip(*h_coords))),
                                 shape=(2*graph.size(), 2*graph.size()))
@@ -338,7 +341,6 @@ def x_matrix(graph, remove_node=None, add_neighbors=None, return_all=False):
         return (B, D, E, F) if return_all else D.dot(F.dot(E))
 
 
-
 ######################################################################
 ###                           Centrality                           ###
 ######################################################################
@@ -493,7 +495,7 @@ def x_degree(graph):
 
     """
     degrees = graph.degree()
-    agg = lambda arr: arr.sum()**2 - (arr**2).sum()
+    def agg(arr): return arr.sum()**2 - (arr**2).sum()
     return {node: agg(np.array([degrees[n] - 1 for n in graph.neighbors(node)]))
             for node in graph}
 
@@ -563,7 +565,6 @@ def shave(graph):
         if not to_remove:
             break
     return core
-
 
 
 ######################################################################
@@ -693,7 +694,7 @@ def _immunize_deg(adj, num_nodes, queue=True):
         if queue:
             node = deg.pop()             # Takes O(log n)
         else:
-            node = max(deg, key=deg.get) # Takes O(n)
+            node = max(deg, key=deg.get)  # Takes O(n)
             del deg[node]
 
         # Takes O(degree[node])
@@ -740,7 +741,7 @@ def _immunize_xdeg(adj, num_nodes, queue=True):
         if queue:
             node = xdeg.pop()             # Takes O(log n)
         else:
-            node = max(xdeg, key=xdeg.get) # Takes O(n)
+            node = max(xdeg, key=xdeg.get)  # Takes O(n)
             del xdeg[node]
 
         # Takes O(degree[node])
@@ -783,9 +784,9 @@ def _immunize_xdeg(adj, num_nodes, queue=True):
         # Compute the deltas. Takes O(degree^2[node])
         for neigh in adj[node]:
             delta[neigh] += \
-                  (2                                  # 2
-                   * (to_be_squared[neigh] - deg + 1) # (s - deg + 1)
-                   * (deg - 1))                       # (deg - 1)
+                (2                                  # 2
+                 * (to_be_squared[neigh] - deg + 1)  # (s - deg + 1)
+                 * (deg - 1))                       # (deg - 1)
             for neigh2 in adj[neigh]:
                 # Each time r we visit a node i through a 2hop path, we are
                 # adding 2s(i) + 1 - (2r + 1) - 2(p_r - 1), where p_r is
@@ -796,10 +797,10 @@ def _immunize_xdeg(adj, num_nodes, queue=True):
                 # the neighbors of the target node already changed in the
                 # previous loop, therefore p_r - 1 = len(adj[neigh]).
                 delta[neigh2] += \
-                      (2 * to_be_squared[neigh2]           # 2s
-                       + 1                                 # + 1
-                       - (2 * count[neigh2] + 1)           # - (2r + 1)
-                       - 2 * len(adj[neigh]))              # - 2(p_r - 1)
+                    (2 * to_be_squared[neigh2]           # 2s
+                     + 1                                 # + 1
+                     - (2 * count[neigh2] + 1)           # - (2r + 1)
+                     - 2 * len(adj[neigh]))              # - 2(p_r - 1)
 
                 # Increment the count r(i). At the end of this double loop,
                 # we will have count[i] == t(i).
@@ -854,9 +855,9 @@ def _immunize_ci(adj, num_nodes, queue=True):
     removed = []
     for _ in range(num_nodes):
         if queue:
-            node = ci.pop() # Takes O(log n)
+            node = ci.pop()  # Takes O(log n)
         else:
-            node = max(ci, key=ci.get) # Takes O(n)
+            node = max(ci, key=ci.get)  # Takes O(n)
             del ci[node]
 
         # Takes O(degree[node])
@@ -870,8 +871,8 @@ def _immunize_ci(adj, num_nodes, queue=True):
         for neigh in adj[node]:
             if len(adj[neigh]) > 0:
                 delta[neigh] += \
-                      ((deg - 1) * (len(adj[neigh]) - 1)
-                       + ci[neigh] // (len(adj[neigh])))
+                    ((deg - 1) * (len(adj[neigh]) - 1)
+                     + ci[neigh] // (len(adj[neigh])))
             else:
                 # Nodes of degree 1 decrease all the way to zero
                 delta[neigh] += ci[neigh]
