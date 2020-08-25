@@ -8,12 +8,12 @@ computations.
 
 """
 
-import numpy as np
-import networkx as nx
-import scipy.sparse as sparse
 from collections import defaultdict
-from pqdict import maxpq
 
+import networkx as nx
+import numpy as np
+import scipy.sparse as sparse
+from pqdict import maxpq
 
 ######################################################################
 ###                            Matrices                            ###
