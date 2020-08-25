@@ -22,6 +22,8 @@ from pqdict import maxpq
 def half_incidence(graph, ordering='blocks', return_ordering=False):
     """Return the 'half incidence' matrices of the graph.
 
+    this is a test
+
     The resulting matrices have shape of (n, 2m), where n is the number of
     nodes and m is the number of edges.
 
