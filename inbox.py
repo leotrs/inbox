@@ -101,14 +101,12 @@ def half_incidence(graph, ordering="blocks", return_ordering=False):
 
         """
         coords = [
-            pair
-            for idx, (node1, node2) in enumerate(graph.edges())
+            pair for idx, (node1, node2) in enumerate(graph.edges())
             for pair in make_pairs(idx, node1, node2)
         ]
         data = np.ones(len(coords))
-        return sparse.coo_matrix(
-            (data, list(zip(*coords))), shape=(numnodes, 2 * numedges)
-        )
+        return sparse.coo_matrix((data, list(zip(*coords))),
+                                 shape=(numnodes, 2 * numedges))
 
     source = make_coo(src_pairs).asformat("csr")
     target = make_coo(tgt_pairs).asformat("csr")
@@ -187,19 +185,19 @@ def nb_matrix(graph, aux=False, ordering="blocks", return_ordering=False):
     else:
         # Compute the NB-matrix in a single pass on the non-zero elements
         # of the intermediate matrix.
-        sources, targets, ord_func = half_incidence(
-            graph, ordering, return_ordering=True
-        )
+        sources, targets, ord_func = half_incidence(graph,
+                                                    ordering,
+                                                    return_ordering=True)
         inter = np.dot(sources.T, targets).asformat("coo")
         inter_coords = set(zip(inter.row, inter.col))
 
         # h_coords contains the (row, col) coordinates of non-zero elements
         # in the NB-matrix
-        h_coords = [(r, c) for r, c in inter_coords if (c, r) not in inter_coords]
+        h_coords = [(r, c) for r, c in inter_coords
+                    if (c, r) not in inter_coords]
         data = np.ones(len(h_coords))
-        nbm = sparse.coo_matrix(
-            (data, list(zip(*h_coords))), shape=(2 * graph.size(), 2 * graph.size())
-        )
+        nbm = sparse.coo_matrix((data, list(zip(*h_coords))),
+                                shape=(2 * graph.size(), 2 * graph.size()))
 
         # Return the correct format
         nbm = nbm.asformat("csr")
@@ -226,7 +224,8 @@ def perm_matrix(size):
     'blocks' ordering.
 
     """
-    return sparse.bmat([[None, sparse.identity(size)], [sparse.identity(size), None]])
+    return sparse.bmat([[None, sparse.identity(size)],
+                        [sparse.identity(size), None]])
 
 
 def x_matrix(graph, remove_node=None, add_neighbors=None, return_all=False):
@@ -308,9 +307,10 @@ def x_matrix(graph, remove_node=None, add_neighbors=None, return_all=False):
     """
     if remove_node is not None:
         nbm, ordering = nb_matrix(graph, return_ordering=True)
-        incident = np.array(
-            [ordering(i) for i, edge in enumerate(graph.edges()) if remove_node in edge]
-        ).ravel()
+        incident = np.array([
+            ordering(i) for i, edge in enumerate(graph.edges())
+            if remove_node in edge
+        ]).ravel()
         not_incident = set(range(2 * graph.size())) - set(incident)
         not_incident = np.array(list(not_incident))
         B = nbm[not_incident, :][:, not_incident]
@@ -400,13 +400,14 @@ def nb_centrality(graph, normalized=True, return_eigenvalue=False, tol=0):
     # Matrix computations require node labels to be consecutive integers,
     # so we need to (i) convert them if they are not, and (ii) preserve the
     # original labels as an attribute.
-    graph = nx.convert_node_labels_to_integers(graph, label_attribute="original_label")
+    graph = nx.convert_node_labels_to_integers(
+        graph, label_attribute="original_label")
 
     # The centrality is given by the first entries of the principal left
     # eigenvector of the auxiliary NB-matrix
     val, vec = sparse.linalg.eigs(nb_matrix(graph, aux=True).T, k=1, tol=tol)
     val = val[0].real
-    vec = vec[: graph.order()].ravel()
+    vec = vec[:graph.order()].ravel()
 
     # Sometimes the vector is returned with all negative components and we
     # need to flip the sign.  To check for the sign, we check the sign of
@@ -444,8 +445,8 @@ def compute_mu(graph, val, vec):
 
     """
     degs = graph.degree()
-    coef = sum(vec[n] ** 2 * degs(n) for n in graph)
-    return np.sqrt(val * (val ** 2 - 1) / (1 - coef))
+    coef = sum(vec[n]**2 * degs(n) for n in graph)
+    return np.sqrt(val * (val**2 - 1) / (1 - coef))
 
 
 def x_nb_centrality(graph, approx=True, return_eigenvalue=False, tol=0):
@@ -475,14 +476,15 @@ def x_nb_centrality(graph, approx=True, return_eigenvalue=False, tol=0):
     """
     if approx:
         # Get the correctly normalized NB-centralities
-        nb_cent, val = nb_centrality(
-            graph, return_eigenvalue=True, normalized=True, tol=tol
-        )
+        nb_cent, val = nb_centrality(graph,
+                                     return_eigenvalue=True,
+                                     normalized=True,
+                                     tol=tol)
 
         # Aggregate each node's neighbor's NB-centralities
         nb_cent = np.array([nb_cent[n] for n in graph])
         adj = nx.to_scipy_sparse_matrix(graph)
-        xnb_cent = adj.dot(nb_cent) ** 2 - adj.dot(nb_cent ** 2)
+        xnb_cent = adj.dot(nb_cent)**2 - adj.dot(nb_cent**2)
 
     else:
         # We can compute the true value in one of two ways: (i) remove each
@@ -522,7 +524,7 @@ def x_degree(graph):
     degrees = graph.degree()
 
     def agg(arr):
-        return arr.sum() ** 2 - (arr ** 2).sum()
+        return arr.sum()**2 - (arr**2).sum()
 
     return {
         node: agg(np.array([degrees[n] - 1 for n in graph.neighbors(node)]))
@@ -576,7 +578,7 @@ def x_centrality(graph, values):
     # Second aggregation: square of the sum minus sum of squares of
     # neighbors
     adj = nx.to_scipy_sparse_matrix(graph)
-    xnb_centrality = adj.dot(result) ** 2 - adj.dot(result ** 2)
+    xnb_centrality = adj.dot(result)**2 - adj.dot(result**2)
 
     # Pack in a dict and return
     return {n: xnb_centrality[i].real for i, n in enumerate(graph)}
@@ -591,7 +593,9 @@ def shave(graph):
     """
     core = graph.copy()
     while True:
-        to_remove = [node for node, neighbors in core.adj.items() if len(neighbors) < 2]
+        to_remove = [
+            node for node, neighbors in core.adj.items() if len(neighbors) < 2
+        ]
         core.remove_nodes_from(to_remove)
         if not to_remove:
             break
@@ -749,11 +753,11 @@ def _immunize_xdeg(adj, num_nodes, queue=True):
             # Note we keep the sum of squares, not its square, and square
             # it only when needed.
             to_be_squared[node] += len(adj[neigh]) - 1
-            sum_squares[node] += (len(adj[neigh]) - 1) ** 2
+            sum_squares[node] += (len(adj[neigh]) - 1)**2
 
     # Takes O(n) time and O(n) space
     # Remember to square the first term
-    xdeg = {n: to_be_squared[n] ** 2 - sum_squares[n] for n in adj}
+    xdeg = {n: to_be_squared[n]**2 - sum_squares[n] for n in adj}
 
     # We actually don't need this again
     del sum_squares
@@ -815,7 +819,8 @@ def _immunize_xdeg(adj, num_nodes, queue=True):
         # Compute the deltas. Takes O(degree^2[node])
         for neigh in adj[node]:
             delta[neigh] += (
-                2 * (to_be_squared[neigh] - deg + 1) * (deg - 1)  # 2  # (s - deg + 1)
+                2 * (to_be_squared[neigh] - deg + 1) *
+                (deg - 1)  # 2  # (s - deg + 1)
             )  # (deg - 1)
             for neigh2 in adj[neigh]:
                 # Each time r we visit a node i through a 2hop path, we are
@@ -830,8 +835,7 @@ def _immunize_xdeg(adj, num_nodes, queue=True):
                     2 * to_be_squared[neigh2]  # 2s
                     + 1  # + 1
                     - (2 * count[neigh2] + 1)  # - (2r + 1)
-                    - 2 * len(adj[neigh])
-                )  # - 2(p_r - 1)
+                    - 2 * len(adj[neigh]))  # - 2(p_r - 1)
 
                 # Increment the count r(i). At the end of this double loop,
                 # we will have count[i] == t(i).
@@ -901,9 +905,8 @@ def _immunize_ci(adj, num_nodes, queue=True):
         count = defaultdict(int)
         for neigh in adj[node]:
             if len(adj[neigh]) > 0:
-                delta[neigh] += (deg - 1) * (len(adj[neigh]) - 1) + ci[neigh] // (
-                    len(adj[neigh])
-                )
+                delta[neigh] += (deg - 1) * (
+                    len(adj[neigh]) - 1) + ci[neigh] // (len(adj[neigh]))
             else:
                 # Nodes of degree 1 decrease all the way to zero
                 delta[neigh] += ci[neigh]
@@ -953,7 +956,8 @@ def _immunize_netshield(graph, k):
     # Matrix computations require node labels to be consecutive integers,
     # so we need to (i) convert them if they are not, and (ii) preserve the
     # original labels as an attribute.
-    graph = nx.convert_node_labels_to_integers(graph, label_attribute="original_label")
+    graph = nx.convert_node_labels_to_integers(
+        graph, label_attribute="original_label")
 
     # The variable names here match the notation used in [1].
     A = nx.to_scipy_sparse_matrix(graph).astype("d")
@@ -961,7 +965,7 @@ def _immunize_netshield(graph, k):
     lambda_, u = sparse.linalg.eigs(A, k=1)
     lambda_ = lambda_.real
     u = abs(u.real)
-    v = 2 * lambda_ * u ** 2
+    v = 2 * lambda_ * u**2
 
     # The first node is just the one with highest eigenvector centrailty
     first_idx = np.argmax(v)
